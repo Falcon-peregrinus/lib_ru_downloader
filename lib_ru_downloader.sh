@@ -126,7 +126,9 @@ done
 if [ -z "$SEARCHTERM" -a -z "$PAGE" ]
 then
 	echo "Введите название книги или имя автора:"
-	read SEARCHTERM
+	read READSEARCH
+	SEARCHTERM=$(echo $READSEARCH|
+	sed -e s/\ /\\\ /g;echo)
 else
 	true
 fi
