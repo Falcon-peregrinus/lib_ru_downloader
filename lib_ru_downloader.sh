@@ -20,7 +20,7 @@ FILE=search.html
 BOOKS=books.html
 DIR=Книги
 FILES="$FILE $BOOKS"
-if [ -d books ]
+if [ -d $DIR ]
 	then true
 	else mkdir $DIR
 fi
@@ -28,7 +28,7 @@ cd $DIR/
 echo $pwd
 for i in $FILES; do
 	if [ -e $i ]
-		then rm -v $i
+		then rm $i
 	fi
 done
 ############################################
@@ -36,8 +36,7 @@ done
 ############################################
 function search {
 	#Получает ссылку на страничку с выполненным поиском
-	WORD=$1
-	echo $WORD
+	WORD=$1\
 	www=$(echo $WORD|\
 	iconv -f utf-8 -t koi8-r|\
 	hexdump -e '/1 "%02X"'|\
@@ -95,14 +94,28 @@ function convert_links {
 		*) echo $FILES;echo;;
 	esac
 }
+function recode_files {
+#Перекодировать файл в выбранную кодировку
+	FILE="$1"
+	ENCODING="$2"
+	if [ $ENCODING = "koi8-r" ];
+then
+	RIGHTFILE=$FILE
+else
+	RIGHTFILE=$(cat $FILE|iconv -f koi8-r -t utf-8|iconv -cf utf-8 -t $ENCODING;echo)
+	echo $RIGHTFILE > $FILE
+fi
+}
 function rename_files {
 	############################################
 	#Переименовывает файл в название_книги.txt
 	############################################
 	FILE=$1
-	#cat $FILE
+	ENCODING=$2
 	LAST_FILENAME=$(cat $FILE|\
-	iconv -f koi8-r -t utf8|
+	iconv -f $ENCODING -t utf-8|\
+	tr "\r" "\n"|\
+	tr "\r\n" "\n"|\
 	sed -e '/^$/d'|\
 	grep -o -m1 '[^\\]*'|\
 	sed -e 's/.*<title>\(.*\)<.*title>.*/\1/g'|\
@@ -116,10 +129,11 @@ function rename_files {
 #############################################
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--help)		shift;echo -e "\tПомощь\t\nДля указания поискового запроса используйте --search <термин>\nДля указания страницы загрузки используйте --pege <страница>\nДля указания формата используйте --format <ascii,printed,html>";exit ;;
+	--help)		shift;echo -e "\tПомощь\t\nДля указания поискового запроса используйте --search <термин>\nДля указания страницы загрузки используйте --page <страница>\nДля указания формата используйте --format <ascii,printed,html>,для указания кодировки используйте --enc <windows-1251,koi8-r,iso-8859-5,mac-cyrillic,cp866,utf-8>";exit ;;
 	--page|-p)		shift;PAGE="$1";shift ;;
 	--format|-f)	shift;FORMAT="$1";shift;;
 	--search|-s)	shift;SEARCHTERM="$1";shift;;
+	--enc|-e)		shift;ENCODE="$1";shift;;
 	*)				shift;break ;;
 	esac
 done
@@ -132,7 +146,11 @@ then
 else
 	true
 fi
+if [ -z "$PAGE" ];then
 wget -O $FILE $(search "$SEARCHTERM")
+else
+	true
+fi
 PS3="Книги? "
 if [ -z "$PAGE" ]
 then
@@ -153,13 +171,11 @@ if [ $opt = "Всё" ];then
 	LINK1=$(echo $i|grep -o "|||.*"|sed -e 's/|||//g'|sed -e "s|.*|$PAGE\\0|g")
 	echo $LINK1
 	done)
-	#echo "$LINK"
 	break
 else	LINK=$(echo $opt|grep -o "|||.*"|sed -e 's/|||//g'|sed -e "s|.*|$PAGE\\0|g")
 		break
 fi
 done
-#echo $LINK
 if [ -z $FORMAT ];
 then	FORMAT="html ascii printed"
 		select opt in $FORMAT
@@ -170,12 +186,31 @@ then	FORMAT="html ascii printed"
 else	RIGHTLINK=$(convert_links "$LINK" $FORMAT)
 fi
 wget $RIGHTLINK -nc
-for i in $RIGHTLINK; do
-	RFILE=$(echo $i|grep -o '/[^/]*$'|sed -e 's|/||g')
-	rename_files $RFILE
+RFILE=$(for i in $RIGHTLINK; do
+	RFILE1=$(echo $i|grep -o '/[^/]*$'|sed -e 's|/||g')
+	echo $RFILE1
+done)
+###
+if [ -z $ENCODE ];then
+ENCODE="windows-1251 koi8-r iso-8859-5 mac-cyrillic cp866 utf-8"
+select opt in $ENCODE
+do
+	for i in $RFILE; do
+		recode_files $i $opt
+		done
+	break
 done
+else
+for i in $RFILE; do
+		recode_files $i $ENCODE
+		done
+fi
+for i in $RFILE; do
+		rename_files $i $ENCODE
+		done
+###
 for i in $FILES; do
 	if [ -e $i ]
-		then rm -v $i
+		then rm $i
 	fi
 done
