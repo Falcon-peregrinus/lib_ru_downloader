@@ -43,7 +43,7 @@ function search {
 	sed s/../%\\0/g|\
 	sed s/%0A//g;\
 	echo)
-	SEARCH=http://lib.ru/koi/GrepSearch?Search=$www
+	SEARCH=$SITE/koi/GrepSearch?Search=$www
 	echo $SEARCH
 }
 function get_links {
