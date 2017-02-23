@@ -196,6 +196,7 @@ ENCODE="windows-1251 koi8-r iso-8859-5 mac-cyrillic cp866 utf-8"
 select opt in $ENCODE
 do
 	for i in $RFILE; do
+		ENCODE=$opt
 		recode_files $i $opt
 		done
 	break
